@@ -12,6 +12,8 @@ library(tidyverse)
 library(ggplot2)
 ```
 
+## Problem 1 
+
 ```{r}
 has_shared_birthday <- function(n){
   bdays <- sample(1:365, size = n, replace = TRUE)
