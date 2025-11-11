@@ -39,4 +39,10 @@ ggplot(results, aes(x = n, y = prob)) +
   theme_minimal(base_size = 14)
 ```
 
+## Problem 2
+
+```{r}
+library(broom)
+library(purrr)
+```
 
