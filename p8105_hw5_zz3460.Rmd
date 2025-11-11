@@ -1,0 +1,40 @@
+---
+title: "p8105_hw5_zz3460"
+author: "Zihan Zhou"
+date: "2025-11-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(2025)
+library(tidyverse)
+library(ggplot2)
+```
+
+```{r}
+has_shared_birthday <- function(n){
+  bdays <- sample(1:365, size = n, replace = TRUE)
+  any(duplicated(bdays))
+}
+
+reps <- 10000
+ns <- 2:50
+
+results <- tibble(
+  n = ns,
+  prob = map_dbl(ns, ~ mean(replicate(reps, has_shared_birthday(.x))))
+)
+
+ggplot(results, aes(x = n, y = prob)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "probability that at least two people in the group will share a birthday",
+    x = "n",
+    y = "prob"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+
