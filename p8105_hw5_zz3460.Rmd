@@ -46,3 +46,55 @@ library(broom)
 library(purrr)
 ```
 
+```{r}
+n <- 30
+sigma <- 5
+mus <- 0:6
+reps <- 5000
+
+simulate_for_mu <- function(mu){
+replicate(reps, {
+x <- rnorm(n, mean = mu, sd = sigma)
+t_out <- t.test(x, mu = 0)
+tidy(t_out)[c("estimate", "p.value")]
+}, simplify = FALSE) %>%
+bind_rows(.id = "sim") %>%
+mutate(mu = mu)
+}
+
+sim_all <- map_dfr(mus, simulate_for_mu)
+
+power_by_mu <- sim_all %>%
+mutate(reject = p.value < 0.05) %>%
+group_by(mu) %>%
+summarise(power = mean(reject),
+mean_est = mean(estimate),
+mean_est_reject = mean(estimate[reject], na.rm = TRUE),
+n_reject = sum(reject))
+
+power_by_mu
+```
+
+```{r}
+p1 <- ggplot(power_by_mu, aes(x = mu, y = power)) +
+geom_line() + geom_point() +
+labs(title = "one sample t-test（n=30, sigma=5, reps=5000）",
+x = "mu",
+y = "power）") +
+theme_minimal(base_size = 14)
+
+p2 <- ggplot(power_by_mu, aes(x = mu)) +
+geom_line(aes(y = mean_est), linetype = "dashed") +
+geom_point(aes(y = mean_est)) +
+geom_line(aes(y = mean_est_reject), color = "red") +
+geom_point(aes(y = mean_est_reject), color = "red") +
+labs(title = "average estimate",
+x = "mu",
+y = "\u0303mu") +
+theme_minimal(base_size = 14)
+
+
+p1
+p2
+```
+
