@@ -7,12 +7,20 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Problem 1 
+
+Load necessary packages and set seed.
+
+```{r}
 set.seed(2025)
 library(tidyverse)
 library(ggplot2)
 ```
 
-## Problem 1 
+Define a function to solve the problem.
 
 ```{r}
 has_shared_birthday <- function(n){
@@ -39,12 +47,20 @@ ggplot(results, aes(x = n, y = prob)) +
   theme_minimal(base_size = 14)
 ```
 
+The plot shows that:
+1. When the group size is over 23, the probability is above 50%.
+2. When the group size reaches 50, the probability is close to 100%.
+
 ## Problem 2
+
+Load key packages.
 
 ```{r}
 library(broom)
 library(purrr)
 ```
+
+Do simulations.
 
 ```{r}
 n <- 30
@@ -53,59 +69,73 @@ mus <- 0:6
 reps <- 5000
 
 simulate_for_mu <- function(mu){
-replicate(reps, {
-x <- rnorm(n, mean = mu, sd = sigma)
-t_out <- t.test(x, mu = 0)
-tidy(t_out)[c("estimate", "p.value")]
-}, simplify = FALSE) %>%
-bind_rows(.id = "sim") %>%
-mutate(mu = mu)
+  replicate(reps, {
+    x <- rnorm(n, mean = mu, sd = sigma)
+    t_out <- t.test(x, mu = 0)
+    tidy(t_out)[c("estimate", "p.value")]
+  }, simplify = FALSE) %>%
+  bind_rows(.id = "sim") %>%
+  mutate(mu = mu)
 }
 
 sim_all <- map_dfr(mus, simulate_for_mu)
 
 power_by_mu <- sim_all %>%
-mutate(reject = p.value < 0.05) %>%
-group_by(mu) %>%
-summarise(power = mean(reject),
-mean_est = mean(estimate),
-mean_est_reject = mean(estimate[reject], na.rm = TRUE),
-n_reject = sum(reject))
+  mutate(reject = p.value < 0.05) %>%
+  group_by(mu) %>%
+  summarise(power = mean(reject),
+  mean_est = mean(estimate),
+  mean_est_reject = mean(estimate[reject], na.rm = TRUE),
+  n_reject = sum(reject))
 
 power_by_mu
 ```
 
+Make plots.
+
 ```{r}
 p1 <- ggplot(power_by_mu, aes(x = mu, y = power)) +
-geom_line() + geom_point() +
-labs(title = "one sample t-test（n=30, sigma=5, reps=5000）",
-x = "mu",
-y = "power）") +
-theme_minimal(base_size = 14)
-
-p2 <- ggplot(power_by_mu, aes(x = mu)) +
-geom_line(aes(y = mean_est), linetype = "dashed") +
-geom_point(aes(y = mean_est)) +
-geom_line(aes(y = mean_est_reject), color = "red") +
-geom_point(aes(y = mean_est_reject), color = "red") +
-labs(title = "average estimate",
-x = "mu",
-y = "\u0303mu") +
-theme_minimal(base_size = 14)
-
+  geom_line() + 
+  geom_point() +
+  labs(title = "one sample t-test (n=30, sigma=5, reps=5000)",
+x = "mu", y = "power") +
+  theme_minimal(base_size = 14)
 
 p1
+```
+
+p1 shows a strong positive association between the effect size (the true value of $\mu$) and power.
+- When the true $\mu$ is 0 (meaning the null hypothesis is true), the power is approximately 5%. This is the Type I error rate ($\alpha$), which is exactly what we set our significance level to. We correctly rejected the (true) null hypothesis about 5% of the time.
+- As the true $\mu$ increases, moving further away from the null value of 0, the power (the probability of correctly rejecting the false null) increases rapidly.
+- By the time the true $\mu$ reaches 4, the test has nearly 100% power, meaning it almost always detects the effect.
+
+```{r}
+p2 <- ggplot(power_by_mu, aes(x = mu)) +
+  geom_line(aes(y = mean_est), linetype = "dashed") +
+  geom_point(aes(y = mean_est)) +
+  geom_line(aes(y = mean_est_reject), color = "red") +
+  geom_point(aes(y = mean_est_reject), color = "red") +
+  labs(title = "average estimate", x = "mu", y = "mu_hat") +
+  theme_minimal(base_size = 14)
+
 p2
 ```
 
+Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
+
+No, the sample average of $\hat{\mu}$ among only the tests where the null is rejected is not approximately equal to the true value of $\mu$, especially when the true $\mu$ is small and power is low. This bias arises from selection based on significance. The overall average of $\hat{\mu}$ across all simulations (red line) lies exactly on the $y=x$ line, confirming that $\hat{\mu}$ is an unbiased estimator of $\mu$ in general. However, the average conditional on rejection (blue line) is biased upward. When $\mu$ is small (e.g., $\mu=1$), the only way to achieve a significant result is when random sampling produces an unusually large $\hat{\mu}$, inflating the conditional mean. As $\mu$ grows and power approaches 100%, nearly all simulations lead to rejection; thus, the “rejected only” group becomes equivalent to the full set of simulations, causing the red and blue lines to converge for large true effect sizes.
+
 ## Problem 3
 
+Load key packages.
+
 ```{r}
-library(readr)
-library(dplyr)
-library(tidyr)
-library(purrr)
+library(tidyverse)
 library(broom)
-library(ggplot2)
+library(purrr)
+```
+
+```{r}
+
 ```
 
