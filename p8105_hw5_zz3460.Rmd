@@ -127,7 +127,7 @@ No, the sample average of $\hat{\mu}$ among only the tests where the null is rej
 
 ## Problem 3
 
-Load key packages.
+1.Load key packages.
 
 ```{r}
 library(tidyverse)
@@ -135,7 +135,93 @@ library(broom)
 library(purrr)
 ```
 
+2.Describe the data.
+
 ```{r}
+homicide <- read_csv("data/homicide-data.csv")
+
+glimpse(homicide)
+summary(homicide)
 
 ```
 
+The raw dataset contains individual homicide records from 50 major U.S. cities. Each row represents a single homicide case, including information such as the victim’s demographics, incident date, location, and case disposition. The disposition variable is particularly important because it indicates whether a homicide was solved, unsolved, or closed without an arrest. Since the dataset stores city and state in separate fields, we create a combined city_state variable to facilitate grouping and summary analyses at the city level.
+
+3.Create city_state and summarize homicides per city.
+
+```{r}
+homicide_city <- homicide %>%
+  mutate(city_state = paste(city, state, sep = ", "),
+  unsolved = disposition %in% c("Closed without arrest", "Open/No arrest")) %>%
+  group_by(city_state) %>%
+  summarise(
+    total = n(),
+    unsolved = sum(unsolved)
+  ) %>%
+  arrange(desc(unsolved))
+
+homicide_city
+
+```
+
+After creating the city_state variable, we summarize each city by computing the total number of homicides and the number of unsolved homicides. Here, unsolved cases are defined as those with dispositions “Closed without arrest” or “Open/No arrest.” This provides a clear overview of the burden of unsolved homicides across U.S. cities and forms the basis for estimating city-specific unsolved proportions.
+
+4.Baltimore, MD – run prop.test() and extract proportion + CI
+
+```{r}
+baltimore <- homicide_city %>%
+  filter(city_state == "Baltimore, MD")
+
+baltimore_test <- prop.test(
+  x = baltimore$unsolved,
+  n = baltimore$total
+)
+
+baltimore_tidy <- tidy(baltimore_test)
+
+baltimore_tidy %>%
+  select(estimate, conf.low, conf.high)
+
+```
+
+For Baltimore, MD, we use prop.test() to estimate the proportion of homicides that remain unsolved. The test output, once tidied using broom::tidy(), provides the estimated proportion along with its 95% confidence interval. This gives a statistically grounded estimate of Baltimore’s unsolved rate, taking into account sampling variability.
+
+5.Run prop.test() for all cities.
+
+```{r}
+city_results <- homicide_city %>%
+  mutate(
+    test = map2(unsolved, total, ~ prop.test(.x, .y)),
+    tidy = map(test, tidy)
+  ) %>%
+  unnest(tidy) %>%
+  select(city_state, total, unsolved, estimate, conf.low, conf.high)
+
+city_results
+
+```
+
+We repeat the proportion test for every city in the dataset using a tidy workflow that relies on purrr::map and list columns. For each city, we extract the estimated proportion of unsolved homicides and its confidence interval. The resulting tidy dataframe allows us to compare cities systematically and supports clear visualization with confidence intervals.
+
+6.Plot estimates + CIs for each city.
+
+```{r}
+city_results_plot <- city_results %>%
+  arrange(estimate) %>%
+  mutate(city_state = factor(city_state, levels = city_state))
+
+p3 <- ggplot(city_results_plot, aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  coord_flip() +
+  labs(
+    title = "Estimated proportion of unsolved homicides by city",
+    x = "City",
+    y = "Estimated proportion unsolved"
+  ) +
+  theme_minimal(base_size = 14)
+
+p3
+```
+
+The plot displays each city’s estimated proportion of unsolved homicides, along with its corresponding confidence interval. Cities are ordered from lowest to highest unsolved proportion, allowing easy comparison across locations. Wide confidence intervals typically correspond to cities with fewer total homicides, whereas narrower intervals indicate more data and therefore more precise estimates. This visualization highlights substantial variation across cities in the proportion of unsolved homicide cases.
